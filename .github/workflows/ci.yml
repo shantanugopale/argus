@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: install (dev tooling only, zero runtime deps)
+        run: npm install
+      - name: strict typecheck
+        run: npm run typecheck
+      - name: lint
+        run: npm run lint
+      - name: tests (hermetic, fixtures only, no network)
+        run: npm test

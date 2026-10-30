@@ -1,0 +1,17 @@
+{
+  "recordedAt": "2026-10-28T17:30:40.267Z",
+  "packages": [
+    "chalk",
+    "debug",
+    "lodash",
+    "react",
+    "request",
+    "colors",
+    "left-pad",
+    "event-stream",
+    "express",
+    "semver",
+    "axios",
+    "node-fetch"
+  ]
+}
