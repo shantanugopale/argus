@@ -1,6 +1,6 @@
 {
   "name": "@argus/argus",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Supply-chain radar: tracks what's trending and whether it's safe to install, right now. Codename Argus.",
   "type": "module",

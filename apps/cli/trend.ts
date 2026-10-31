@@ -1,9 +1,6 @@
-import { buildTrendReport, type TrendReport, type TrendingRepoRow } from "../../engine/trend/build-trend.ts";
-import { fetchDownloadsRange } from "../../shell/connectors/npm-downloads.ts";
-import { fetchGithubTrending } from "../../shell/connectors/github-trending.ts";
-import { POPULAR_NAMES } from "../../engine/npm/top-index.ts";
-import { makePool } from "../../shell/lib/pool.ts";
+import type { TrendReport } from "../../engine/trend/build-trend.ts";
 import { colorAware, BOLD, DIM, GRAY, RED, YELLOW, GREEN, CYAN } from "./ui.ts";
+import { collectTrendData } from "./collect-trend.ts";
 
 export interface TrendOptions {
   days: number;
@@ -12,51 +9,10 @@ export interface TrendOptions {
 }
 
 export async function runTrend(opts: TrendOptions): Promise<number> {
-  const now = new Date().toISOString();
-  const names = POPULAR_NAMES.slice(0, opts.top);
-
-  const pool = makePool(6);
-  const seriesResults = await Promise.all(
-    names.map((name) =>
-      pool.executeWithLimit(async () => {
-        try {
-          return await fetchDownloadsRange(name, opts.days, "argus-supply-chain-radar/+npm-collector", now);
-        } catch {
-          return null;
-        }
-      })
-    )
-  );
-
-  let trendingRepos: TrendingRepoRow[] = [];
-  try {
-    const gh = await fetchGithubTrending(now);
-    trendingRepos = gh.repos.map((r) => ({ repo: r.repo, starsThisPeriod: r.starsThisPeriod, period: r.period }));
-  } catch {
-    trendingRepos = [];
-  }
-
-  const seriesByName = new Map<string, number[]>();
-  const digests: string[] = [];
-  for (const r of seriesResults) {
-    if (!r) continue;
-    seriesByName.set(r.name, r.series);
-    digests.push(r.snapshot.digest.slice(0, 12));
-  }
-
-  const report = buildTrendReport({
-    generatedAt: now,
-    windowDays: opts.days,
-    seriesByName,
-    repos: trendingRepos,
-    snapshotDigests: digests
-  });
+  const report = await collectTrendData(opts.days, opts.top);
 
   if (opts.asJson) {
-    console.log(JSON.stringify({
-      ...report,
-      digests
-    }, null, 2));
+    console.log(JSON.stringify(report, null, 2));
     return 0;
   }
   return renderTrend(report);

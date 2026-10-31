@@ -56,7 +56,7 @@
   <div id="history" class="empty">loading…</div>
 </div>
 
-<footer>ARGUS v0.1 · zero-dependency static client · evidence over scores</footer>
+<footer>ARGUS v1.0 · zero-dependency static client · evidence over scores</footer>
 
 <script>
 async function j(url, opts) {
@@ -71,15 +71,17 @@ async function loadTrend() {
     const spikes = document.getElementById("spikes");
     if (t.rows.length === 0) { spikes.innerHTML = '<span class="empty">no anomalous spikes in cohort</span>'; }
     else {
-      spikes.innerHTML = "<table><tr><th>package</th><th>class</th><th>ratio</th><th>downloads/day</th></tr>" +
-        t.rows.slice(0, 12).map(r => "<tr><td>" + r.name + "</td><td class='spike-" + r.spike + "'>" + r.spike + "</td><td>" + r.burstRatio.toFixed(2) + "x" +
-          (r.cohortWide ? " (rel " + r.relativeRatio.toFixed(2) + "x)" : "") + "</td><td>" + r.latest.toLocaleString("en-US") + "</td></tr>").join("") + "</table>";
+      spikes.innerHTML = "<table><tr><th>package</th><th>class</th><th>ratio</th><th>downloads/day</th><th></th></tr>" +
+        t.rows.slice(0, 12).map(r => "<tr><td><code>" + r.name + "</code></td><td class='spike-" + r.spike + "'>" + r.spike + "</td><td>" + r.burstRatio.toFixed(2) + "x" +
+          (r.cohortWide ? " (rel " + r.relativeRatio.toFixed(2) + "x)" : "") + "</td><td>" + r.latest.toLocaleString("en-US") + "</td>" +
+          "<td><button onclick=\"document.getElementById('ref').value='npm:" + r.name + "';scan()\">scan</button></td></tr>").join("") + "</table>";
     }
     const repos = document.getElementById("repos");
     if (t.repos.length === 0) { repos.innerHTML = '<span class="empty">trending feed unavailable</span>'; }
     else {
-      repos.innerHTML = "<table><tr><th>repo</th><th>★ today</th></tr>" +
-        t.repos.slice(0, 10).map(r => "<tr class='scanrow'><td>" + r.repo + "</td><td>" + r.starsThisPeriod.toLocaleString("en-US") + "</td></tr>").join("") + "</table>";
+      repos.innerHTML = "<table><tr><th>repo</th><th>★ today</th><th></th></tr>" +
+        t.repos.slice(0, 10).map(r => "<tr class='scanrow'><td><code>" + r.repo + "</code></td><td>" + r.starsThisPeriod.toLocaleString("en-US") + "</td>" +
+          "<td><button onclick=\"document.getElementById('ref').value='gh:" + r.repo + "';scan()\">scan</button></td></tr>").join("") + "</table>";
     }
   } catch (e) { document.getElementById("spikes").innerHTML = "error: " + e.message; }
 }
