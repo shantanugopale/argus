@@ -4,6 +4,8 @@ import type { OsAdvisories, ProviderSnapshot, ScanProviders } from "../../engine
 import { parseNpmPackageData, PackageNotFoundError } from "./npm-registry.ts";
 import { parseOsvResponse } from "./osv-dev.ts";
 import { snapshotOf, type HttpResult } from "./http.ts";
+import { parseTrendingHtml, unescapeLookalikes } from "./github-trending.ts";
+import { parseGithubRepoDoc, parseRepoManifest } from "../../engine/lib/parse-repo.ts";
 
 export interface FixtureMeta {
   recordedAt: string;
@@ -45,8 +47,34 @@ export function buildFixtureProviders(fixturesDir: string, now: string): ScanPro
       const osv = readFixture(fixturesDir, join(base, "osv.json"));
       const data: OsAdvisories = parseOsvResponse(osv.json);
       return { data, snapshot: snapshotOf(`fixture://osv/${base}`, osv.digest, now) };
+    },
+    async getGithubRepo(fullName) {
+      const base = fullName.replace(/\/+/g, "__");
+      const repo = readFixtureSafe(fixturesDir, join("gh", `${base}.json`), fullName);
+      const snapshot = snapshotOf(`fixture://github/${base}`, repo.digest, now);
+      const manifestText = readTextFixture(fixturesDir, join("gh", `${base}.package.json`));
+      const manifest = manifestText === null ? null : parseRepoManifest(JSON.parse(manifestText));
+      return {
+        data: parseGithubRepoDoc(repo.json, manifest, fullName),
+        snapshot
+      };
+    },
+    async getTrendingToday() {
+      const html = readTextFixture(fixturesDir, join("gh", "trending.html")) ?? "";
+      const repos = parseTrendingHtml(html)
+        .map((r) => ({ repo: unescapeLookalikes(r.repo), starsThisPeriod: r.starsThisPeriod, period: r.period }));
+      const snapshot = snapshotOf("fixture://github-trending", String(html.length), now);
+      return { repos, snapshot };
     }
   };
+}
+
+function readTextFixture(fixturesDir: string, relPath: string): string | null {
+  try {
+    return readFileSync(join(fixturesDir, relPath), "utf8");
+  } catch {
+    return null;
+  }
 }
 
 function readFixtureSafe(fixturesDir: string, relPath: string, pkgName: string): HttpResult {

@@ -70,7 +70,8 @@ function parseDownloadsLike(json: unknown | null): number | null {
   return typeof d === "number" && Number.isFinite(d) ? d : null;
 }
 
-export async function fetchNpmPackage(name: string, now: string): Promise<NpmFetch> {
+export async function fetchNpmPackage(name: string, now: string, opts: { includeMonth?: boolean } = {}): Promise<NpmFetch> {
+  const includeMonth = opts.includeMonth !== false;
   const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(name)}`;
 
   const doc = await fetchJson(registryUrl, { timeoutMs: 45_000 }).catch((e: unknown) => {
@@ -83,9 +84,11 @@ export async function fetchNpmPackage(name: string, now: string): Promise<NpmFet
     fetchJson(`https://api.npmjs.org/downloads/point/last-week/${encodeURIComponent(name)}`, {
       timeoutMs: 15_000
     }).catch(() => null),
-    fetchJson(`https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(name)}`, {
-      timeoutMs: 15_000
-    }).catch(() => null)
+    includeMonth
+      ? fetchJson(`https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(name)}`, {
+          timeoutMs: 15_000
+        }).catch(() => null)
+      : Promise.resolve(null)
   ]);
   const downloadsWeek = weekOrNull;
   const downloadsMonth = monthOrNull;

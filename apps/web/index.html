@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ARGUS · supply-chain radar</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { background: #0b0f14; color: #d7e0ea; font-family: "Cascadia Code", Consolas, monospace; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; letter-spacing: 2px; margin: 0 0 4px; }
+  .sub { color: #6b7a8c; font-size: 12px; margin-bottom: 24px; }
+  .panel { border: 1px solid #1d2733; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; background: #0e141b; }
+  h2 { font-size: 12px; letter-spacing: 1.5px; color: #8fb2d0; margin: 0 0 12px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid #16202b; text-align: left; }
+  th { color: #6b7a8c; font-weight: 400; font-size: 11px; letter-spacing: 1px; }
+  .spike-exploding { color: #ff6b6b; font-weight: bold; }
+  .spike-hot { color: #ffd166; }
+  .spike-rising { color: #d0a03b; }
+  .verdict-CRITICAL, .verdict-HIGH_RISK { color: #ff6b6b; }
+  .verdict-NEEDS_REVIEW { color: #ffd166; }
+  .verdict-SAFE { color: #7dd87d; }
+  .scanrow td:first-child { color: #7fd4f0; }
+  button { background: #14212e; color: #9fd2f5; border: 1px solid #1d3851; border-radius: 6px; padding: 8px 14px; font-family: inherit; cursor: pointer; }
+  button:hover { background: #1b2d3f; }
+  input { background: #0b1219; color: #d7e0ea; border: 1px solid #1d2733; border-radius: 6px; padding: 8px; font-family: inherit; width: 280px; }
+  code { color: #7fd4f0; }
+  footer { color: #45525f; font-size: 11px; margin-top: 30px; }
+  .empty { color: #55626e; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>ARGUS ▸ supply-chain radar</h1>
+<div class="sub">what's trending right now — and is it safe to install, right now · <code>exit codes 0/10/20</code></div>
+
+<div class="panel">
+  <h2>Scan a ref (npm package or gh:owner/repo)</h2>
+  <input id="ref" placeholder="chalk" />
+  <button onclick="scan()">scan</button>
+  <div id="scanArea" style="margin-top: 12px"></div>
+</div>
+
+<div class="panel">
+  <h2>Download spikes (top 15 npm cohort · 14d)</h2>
+  <div id="spikes" class="empty">loading…</div>
+</div>
+
+<div class="panel">
+  <h2>Viral GitHub repos (24h)</h2>
+  <div id="repos" class="empty">loading…</div>
+</div>
+
+<div class="panel">
+  <h2>Scan drill-down (registry reports persisted in .argus/)</h2>
+  <div id="history" class="empty">loading…</div>
+</div>
+
+<footer>ARGUS v0.1 · zero-dependency static client · evidence over scores</footer>
+
+<script>
+async function j(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ("HTTP " + r.status));
+  return r.json();
+}
+
+async function loadTrend() {
+  try {
+    const t = await j("/api/trend");
+    const spikes = document.getElementById("spikes");
+    if (t.rows.length === 0) { spikes.innerHTML = '<span class="empty">no anomalous spikes in cohort</span>'; }
+    else {
+      spikes.innerHTML = "<table><tr><th>package</th><th>class</th><th>ratio</th><th>downloads/day</th></tr>" +
+        t.rows.slice(0, 12).map(r => "<tr><td>" + r.name + "</td><td class='spike-" + r.spike + "'>" + r.spike + "</td><td>" + r.burstRatio.toFixed(2) + "x" +
+          (r.cohortWide ? " (rel " + r.relativeRatio.toFixed(2) + "x)" : "") + "</td><td>" + r.latest.toLocaleString("en-US") + "</td></tr>").join("") + "</table>";
+    }
+    const repos = document.getElementById("repos");
+    if (t.repos.length === 0) { repos.innerHTML = '<span class="empty">trending feed unavailable</span>'; }
+    else {
+      repos.innerHTML = "<table><tr><th>repo</th><th>★ today</th></tr>" +
+        t.repos.slice(0, 10).map(r => "<tr class='scanrow'><td>" + r.repo + "</td><td>" + r.starsThisPeriod.toLocaleString("en-US") + "</td></tr>").join("") + "</table>";
+    }
+  } catch (e) { document.getElementById("spikes").innerHTML = "error: " + e.message; }
+}
+
+async function scan() {
+  const ref = document.getElementById("ref").value.trim();
+  const area = document.getElementById("scanArea");
+  if (!ref) return;
+  area.innerHTML = "scanning " + ref + " …";
+  try {
+    const r = await j("/api/scan?ref=" + encodeURIComponent(ref));
+    const rows = r.findings.map(f => "<tr><td>" + f.id + "</td><td>" + f.title + "</td><td>+" + f.points + "</td><td class='verdict-" + r.verdict + "'>" + f.evidence + "</td></tr>").join("");
+    area.innerHTML =
+      "<div style='margin-bottom:8px'><span class='verdict-" + r.verdict + "' style='font-weight:bold'>" + r.verdict + "</span> · score " + r.score + "/100 · checked " + (r.persistedAt || r.checkedAt) + "</div>" +
+      (rows ? "<table><tr><th>sig</th><th>title</th><th>pts</th><th>evidence</th></tr>" + rows + "</table>" : "<span class='empty'>no signals fired — clean scan</span>");
+    loadHistory();
+  } catch (e) { area.innerHTML = "<span class='verdict-CRITICAL'>error: " + e.message + "</span>"; }
+}
+
+async function loadHistory() {
+  try {
+    const items = await j("/api/scans");
+    const el = document.getElementById("history");
+    if (items.length === 0) { el.innerHTML = "<span class='empty'>no scans persisted yet — run one above</span>"; return; }
+    el.innerHTML = "<table><tr><th>ref</th><th>verdict</th><th>score</th><th>persisted</th></tr>" +
+      items.slice(0, 12).map(i =>
+        "<tr class='scanrow'><td><code>" + i.ref + "</code></td><td class='verdict-" + i.verdict + "'>" + i.verdict +
+        "</td><td>" + i.score + "/100</td><td>" + new Date(i.persistedAt).toLocaleString("en-US") + "</td></tr>").join("") + "</table>";
+  } catch {}
+}
+
+document.getElementById("ref").addEventListener("keydown", e => { if (e.key === "Enter") scan(); });
+loadTrend();
+loadHistory();
+</script>
+</body>
+</html>

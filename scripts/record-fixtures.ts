@@ -33,6 +33,49 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 4, baseDelayMs = 15
   throw lastError;
 }
 
+const GH_REPOS: string[] = ["facebook/react", "expressjs/express"];
+
+async function recordOneRepo(fullName: string): Promise<void> {
+  const dir = join(FIXTURES_DIR, "gh");
+  mkdirSync(dir, { recursive: true });
+  const base = fullName.replace(/[/]+/g, "__");
+
+  const headers: Record<string, string> = { accept: "application/vnd.github+json" };
+  if (process.env["GITHUB_TOKEN"]) headers["authorization"] = `Bearer ${process.env["GITHUB_TOKEN"]}`;
+
+  const res = await withRetry(async () => {
+    const r = await fetch(`https://api.github.com/repos/${fullName}`, { headers });
+    if (r.status !== 200) throw new Error(`github HTTP ${r.status} for ${fullName}`);
+    return r;
+  });
+  writeFileSync(join(dir, `${base}.json`), JSON.stringify(JSON.parse(await res.text())));
+
+  const manifestRes = await withRetry(async () => {
+    const r = await fetch(`https://raw.githubusercontent.com/${fullName}/HEAD/package.json`);
+    if (r.status !== 200) throw new Error(`manifest HTTP ${r.status} for ${fullName}`);
+    return r;
+  }).catch(() => null);
+  if (manifestRes) writeFileSync(join(dir, `${base}.package.json`), await manifestRes.text());
+
+  console.log(`recorded repo ${fullName}`);
+}
+
+async function recordTrendingHtml(): Promise<void> {
+  const res = await withRetry(async () => {
+    const r = await fetch("https://github.com/trending?since=daily", { headers: { "user-agent": "argus-supply-chain-radar/+npm-collector" } });
+    if (r.status !== 200) throw new Error(`trending HTTP ${r.status}`);
+    return r;
+  }).catch(() => null);
+  if (!res) {
+    console.error("trending scrape failed — leaving existing fixture in place if any");
+    return;
+  }
+  const dir = join(FIXTURES_DIR, "gh");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "trending.html"), await res.text());
+  console.log("recorded github trending html");
+}
+
 async function recordOne(rawName: string): Promise<string> {
   const safe = safeName(rawName);
   const dir = join(FIXTURES_DIR, safe);
@@ -114,6 +157,15 @@ for (const pkg of PACKAGES) {
 
 const meta = { recordedAt, packages: recorded };
 writeFileSync(join(FIXTURES_DIR, "meta.json"), JSON.stringify(meta, null, 2));
+
+for (const repo of GH_REPOS) {
+  try {
+    await recordOneRepo(repo);
+  } catch (e) {
+    console.error(`skip repo ${repo}: ${(e as Error).message}`);
+  }
+}
+await recordTrendingHtml();
 
 const problems = verify(recordedAt, recorded);
 if (problems.length > 0) {
