@@ -1,5 +1,10 @@
 # ARGUS · supply-chain radar
 
+[![ci](https://github.com/shantanugopale/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/shantanugopale/argus/actions/workflows/ci.yml)
+![node >= 22.13](https://img.shields.io/badge/node-%3E%3D22.13-green)
+![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 <p align="center">
   <img src="docs/img/dashboard.png" alt="Argus dashboard — viral repos + scan registry" width="900" />
 </p>
