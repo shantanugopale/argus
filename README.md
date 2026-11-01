@@ -23,6 +23,8 @@ evidence
 
 **Zero runtime dependencies.** The radar itself is Node ≥ 22.13 with nothing installed — `node apps/cli/argus.ts` just runs (TypeScript via native type-stripping).
 
+**Live dashboard:** <https://shantanugopale.github.io/argus/> (static snapshot refreshed daily by CI, or run `node apps/api/main.ts` for live scanning).
+
 ## Why
 
 Vibe-coders and LLM-driven dev loops install packages from trending pages and model suggestions within seconds. Existing gates (audit, socket, etc.) run *after* you've already adopted a dependency — and none of them look at *velocity*. Argus checks at the moment of install:

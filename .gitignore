@@ -1,4 +1,5 @@
 node_modules/
 .argus/
+dist/
 *.log
 .env

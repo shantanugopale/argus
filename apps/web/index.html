@@ -65,9 +65,25 @@ async function j(url, opts) {
   return r.json();
 }
 
+let SNAPSHOT_MODE = false;
+async function withSnapshotFallback(apiUrl, key) {
+  try {
+    const r = await fetch(apiUrl);
+    if (r.ok) return await r.json();
+  } catch {}
+  SNAPSHOT_MODE = true;
+  const s = await fetch("snapshot.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null);
+  return s ? s[key] : null;
+}
+
 async function loadTrend() {
   try {
-    const t = await j("/api/trend");
+    const t = await withSnapshotFallback("/api/trend", "trend");
+    if (!t) throw new Error("no data");
+    if (SNAPSHOT_MODE) {
+      const sub = document.querySelector(".sub");
+      if (sub && !sub.dataset.tagged) { sub.textContent += " · static snapshot " + (t.generatedAt || ""); sub.dataset.tagged = "1"; }
+    }
     const spikes = document.getElementById("spikes");
     if (t.rows.length === 0) { spikes.innerHTML = '<span class="empty">no anomalous spikes in cohort</span>'; }
     else {
@@ -98,12 +114,13 @@ async function scan() {
       "<div style='margin-bottom:8px'><span class='verdict-" + r.verdict + "' style='font-weight:bold'>" + r.verdict + "</span> · score " + r.score + "/100 · checked " + (r.persistedAt || r.checkedAt) + "</div>" +
       (rows ? "<table><tr><th>sig</th><th>title</th><th>pts</th><th>evidence</th></tr>" + rows + "</table>" : "<span class='empty'>no signals fired — clean scan</span>");
     loadHistory();
-  } catch (e) { area.innerHTML = "<span class='verdict-CRITICAL'>error: " + e.message + "</span>"; }
+  } catch (e) { area.innerHTML = "<span class='verdict-CRITICAL'>error: " + e.message + (SNAPSHOT_MODE ? " · static snapshot mode — run `node apps/api/main.ts` for live scans" : "") + "</span>"; }
 }
 
 async function loadHistory() {
   try {
-    const items = await j("/api/scans");
+    const items = await withSnapshotFallback("/api/scans", "scans");
+    if (!items) { document.getElementById("history").innerHTML = "<span class='empty'>no scans persisted yet — run one above</span>"; return; }
     const el = document.getElementById("history");
     if (items.length === 0) { el.innerHTML = "<span class='empty'>no scans persisted yet — run one above</span>"; return; }
     el.innerHTML = "<table><tr><th>ref</th><th>verdict</th><th>score</th><th>persisted</th></tr>" +
