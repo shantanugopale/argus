@@ -1,6 +1,8 @@
 # ARGUS · supply-chain radar
 
 [![ci](https://github.com/shantanugopale/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/shantanugopale/argus/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/argus-radar)](https://www.npmjs.com/package/argus-radar)
+[![npm downloads](https://img.shields.io/npm/dm/argus-radar)](https://www.npmjs.com/package/argus-radar)
 ![node >= 22.13](https://img.shields.io/badge/node-%3E%3D22.13-green)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
@@ -23,6 +25,8 @@ evidence
 
 **Zero runtime dependencies.** The radar itself is Node ≥ 22.13 with nothing installed — `node apps/cli/argus.ts` just runs (TypeScript via native type-stripping).
 
+**Install:** `npx argus-radar scan chalk` — no install step, works anywhere Node ≥ 22.6 runs (or `npm i -g argus-radar`).
+
 **Live dashboard:** <https://shantanugopale.github.io/argus/> (static snapshot refreshed daily by CI, or run `node apps/api/main.ts` for live scanning).
 
 ## Why
@@ -36,7 +40,11 @@ Vibe-coders and LLM-driven dev loops install packages from trending pages and mo
 ## Quick start
 
 ```bash
-# npm source of truth: Node >= 22.13 (native TS type-stripping, zero installs)
+# one-liner, from anywhere (real npm package — no clone needed)
+npx argus-radar scan chalk                   # verdict + exit code 0/10/20
+npx argus-radar trend --top 15
+
+# from a clone: Node >= 22.13 (native TS type-stripping, zero installs)
 node apps/cli/argus.ts scan chalk            # verdict + exit code 0/10/20
 node apps/cli/argus.ts trend                 # 14-day download-velocity radar + GitHub trending
 node apps/cli/argus.ts watch                 # daemon: rescan persisted refs every 15 min
